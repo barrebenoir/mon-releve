@@ -17,7 +17,14 @@ body{min-height:100%;min-height:100dvh;width:100%;overflow-x:hidden;color:#fff;b
 #root{min-height:100vh;min-height:100dvh;padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);padding-bottom:env(safe-area-inset-bottom)}
 input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.5}
 select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='rgba(255,255,255,.5)' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
-@media print{html,body{background:#fff!important}#root{padding:0!important}#status-bg{display:none!important}#root>div>div:last-child{display:none!important}}
+@media print{
+html,body{background:#fff!important;color:#000!important}
+#root{padding:0!important}
+#status-bg{display:none!important}
+*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+#root>div>div[style*="position: fixed"]{display:none!important}
+#root>div>div[style*="backdrop-filter"]:first-child{display:none!important}
+}
 </style>
 </head>
 <body>
@@ -32,15 +39,16 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
 /*
  * ╔═══════════════════════════════════════════════╗
- * ║  MON RELEVÉ — v1.1                            ║
+ * ║  MON RELEVÉ — v1.2                            ║
  * ║  Dark Premium Theme                           ║
  * ║                                               ║
  * ║  Changelog:                                   ║
  * ║  v1.0   — Release production                  ║
  * ║  v1.1   — Nettoyage, debug, optimisation      ║
+ * ║  v1.2   — Fix export JSON + PDF amélioré      ║
  * ╚═══════════════════════════════════════════════╝
  */
-const VERSION = "1.1";
+const VERSION = "1.2";
 
 // ── Timing constants ──
 const TOAST_DURATION_MS = 2000;
@@ -184,7 +192,7 @@ window.MonReleve = function MonReleve() {
       try {
         const file = new File([blob], nomFichier, { type: "application/json" });
         if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: "Mon Relevé — Sauvegarde" });
+          await navigator.share({ files: [file] });
           flash("Sauvegarde partagée ✓"); return;
         }
       } catch (e) { if (e.name === "AbortError") return; }
@@ -243,20 +251,23 @@ window.MonReleve = function MonReleve() {
   const Releve = ({ data, ck: ck2, l: l2, v: v2 }) => {
     let cu = 0;
     const pk = { bg: "#fff", text: "#111827", sub: "#6B7280", muted: "#9CA3AF", accent: "#0D7377", border: "#E5E7EB", orange: "#D97706" };
-    return (<div style={{ background: pk.bg, margin: 16, borderRadius: 20, padding: 20, boxShadow: "0 4px 24px rgba(0,0,0,.2)", fontSize: 12, lineHeight: 1.6, overflowX: "auto", color: pk.text }}>
+    const cell = { padding: "8px 6px", borderBottom: `1px solid ${pk.border}`, borderRight: `1px solid ${pk.border}`, textAlign: "center", fontSize: 10, color: pk.text };
+    const cellL = { ...cell, textAlign: "left", fontWeight: 600 };
+    const cellEnd = { ...cell, borderRight: "none" };
+    return (<div id="releve-pdf" style={{ background: pk.bg, margin: 16, borderRadius: 20, padding: 20, boxShadow: "0 4px 24px rgba(0,0,0,.2)", fontSize: 12, lineHeight: 1.6, overflowX: "auto", color: pk.text }}>
       <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 16, borderBottom: `2px solid ${pk.text}`, marginBottom: 14 }}>
         <div><div style={{ fontSize: 15, fontWeight: 700, color: pk.text }}>{pr.entreprise}</div><div style={{ fontSize: 10, color: pk.sub, marginTop: 2 }}>Relevé d'heures hebdomadaire</div></div>
         <div style={{ textAlign: "right" }}><div style={{ fontSize: 12, fontWeight: 600, color: pk.text }}>{pr.nom}</div><div style={{ fontSize: 10, color: pk.accent, fontWeight: 600, marginTop: 2 }}>{pr.contrat}</div><div style={{ fontSize: 11, fontWeight: 700, marginTop: 4, color: pk.text }}>{ck2}</div><div style={{ fontSize: 9, color: pk.sub }}>{fF(l2)} — {fF(v2)}</div></div>
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 8, fontSize: 10, tableLayout: "fixed" }}>
-        <thead><tr>{["Jour", "Date", "Arrivée", "Départ", "Pause", "Net"].map((h, i) => <th key={h} style={{ padding: "8px 4px", fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: .5, textAlign: i === 0 ? "left" : "center", color: pk.sub, borderBottom: `2px solid ${pk.text}` }}>{h}</th>)}</tr></thead>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 8, fontSize: 10, tableLayout: "fixed", border: `1px solid ${pk.border}` }}>
+        <thead><tr>{["Jour", "Date", "Arrivée", "Départ", "Pause", "Net"].map((h, i) => <th key={h} style={{ padding: "8px 6px", fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: .5, textAlign: i === 0 ? "left" : "center", color: pk.sub, borderBottom: `2px solid ${pk.text}`, borderRight: i < 5 ? `1px solid ${pk.border}` : "none", background: "#F9FAFB" }}>{h}</th>)}</tr></thead>
         <tbody>
           {data.jours.map((j, i) => { const d = new Date(l2); d.setDate(d.getDate() + i);
-            if (j.absence) { const mt = j.motif === "Autre" ? (j.motifAutre || "Autre") : j.motif; return (<tr key={i} style={{ background: "#FFF8F0" }}><td style={{ padding: "8px 4px", borderBottom: `1px solid ${pk.border}`, textAlign: "left", fontWeight: 600, color: pk.text, fontSize: 10 }}>{JOURS[i]}</td><td style={{ padding: "8px 4px", borderBottom: `1px solid ${pk.border}`, textAlign: "center", fontSize: 10, color: pk.text }}>{fF(d)}</td><td colSpan={3} style={{ padding: "8px 4px", borderBottom: `1px solid ${pk.border}`, textAlign: "center", fontSize: 10, color: pk.orange, fontWeight: 500 }}>{mt}</td><td style={{ padding: "8px 4px", borderBottom: `1px solid ${pk.border}`, textAlign: "center", fontSize: 10, color: pk.text }}>—</td></tr>); }
+            if (j.absence) { const mt = j.motif === "Autre" ? (j.motifAutre || "Autre") : j.motif; return (<tr key={i} style={{ background: "#FFF8F0" }}><td style={cellL}>{JOURS[i]}</td><td style={cell}>{fF(d)}</td><td colSpan={3} style={{ ...cell, color: pk.orange, fontWeight: 500 }}>{mt}</td><td style={{ ...cellEnd, color: pk.text }}>—</td></tr>); }
             const n = cNet(j.arrivee, j.depart, pr); cu += n;
-            return (<tr key={i} style={i % 2 ? { background: "#FAFBFC" } : {}}><td style={{ padding: "8px 4px", borderBottom: `1px solid ${pk.border}`, textAlign: "left", fontWeight: 600, color: pk.text, fontSize: 10 }}>{JOURS[i]}</td><td style={{ padding: "8px 4px", borderBottom: `1px solid ${pk.border}`, textAlign: "center", fontSize: 10, color: pk.text }}>{fF(d)}</td><td style={{ padding: "8px 4px", borderBottom: `1px solid ${pk.border}`, textAlign: "center", fontSize: 10, color: pk.text }}>{j.arrivee || "—"}</td><td style={{ padding: "8px 4px", borderBottom: `1px solid ${pk.border}`, textAlign: "center", fontSize: 10, color: pk.text }}>{j.depart || "—"}</td><td style={{ padding: "8px 4px", borderBottom: `1px solid ${pk.border}`, textAlign: "center", fontSize: 10, color: pk.text }}>{j.arrivee && j.depart ? m2h(cPause(j.arrivee, j.depart, pr)) : "—"}</td><td style={{ padding: "8px 4px", borderBottom: `1px solid ${pk.border}`, textAlign: "center", fontSize: 10, fontWeight: 700, color: pk.text }}>{j.arrivee && j.depart ? m2h(n) : "—"}</td></tr>);
+            return (<tr key={i} style={i % 2 ? { background: "#FAFBFC" } : {}}><td style={cellL}>{JOURS[i]}</td><td style={cell}>{fF(d)}</td><td style={cell}>{j.arrivee || "—"}</td><td style={cell}>{j.depart || "—"}</td><td style={cell}>{j.arrivee && j.depart ? m2h(cPause(j.arrivee, j.depart, pr)) : "—"}</td><td style={{ ...cellEnd, fontWeight: 700 }}>{j.arrivee && j.depart ? m2h(n) : "—"}</td></tr>);
           })}
-          <tr><td colSpan={5} style={{ padding: "8px 4px", textAlign: "right", fontWeight: 700, borderTop: `2px solid ${pk.text}`, borderBottom: "none", color: pk.text }}>TOTAL</td><td style={{ padding: "8px 4px", fontWeight: 800, fontSize: 14, borderTop: `2px solid ${pk.text}`, borderBottom: "none", color: pk.text }}>{m2h(cu)}</td></tr>
+          <tr style={{ background: "#F9FAFB" }}><td colSpan={5} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 700, borderTop: `2px solid ${pk.text}`, borderBottom: "none", borderRight: `1px solid ${pk.border}`, color: pk.text }}>TOTAL</td><td style={{ padding: "8px 6px", fontWeight: 800, fontSize: 14, borderTop: `2px solid ${pk.text}`, borderBottom: "none", color: pk.text }}>{m2h(cu)}</td></tr>
         </tbody>
       </table>
       <div style={{ fontSize: 9, color: pk.muted, marginTop: 10 }}>Pauses : {pr.pauseMatinHeure || DEFAULT_PAUSE_MATIN_HEURE}–{pr.pauseMatinFin || DEFAULT_PAUSE_MATIN_FIN} + {pr.pauseMidiDebut || DEFAULT_PAUSE_MIDI_DEBUT}–{pr.pauseMidiFin || DEFAULT_PAUSE_MIDI_FIN}</div>
