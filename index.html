@@ -52,9 +52,10 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
  * ║  v1.2   — Fix export JSON + PDF amélioré      ║
  * ║  v1.3   — Fix PDF print, colonnes, historique ║
  * ║  v1.4   — PDF bordure noire + marges          ║
+ * ║  v1.5   — Sécurité des données                ║
  * ╚═══════════════════════════════════════════════╝
  */
-const VERSION = "1.4";
+const VERSION = "1.5";
 
 // ── Timing constants ──
 const TOAST_DURATION_MS = 2000;
@@ -189,24 +190,26 @@ window.MonReleve = function MonReleve() {
   const prenom = (pr.nom || "").split(" ")[0] || pr.nom;
   const showQ = pr.pointageRapide !== false;
 
+  const [lastBackup, setLastBackup] = useState(() => { try { return localStorage.getItem(`${PX}last_backup`) || null; } catch { return null; } });
   const exporter = async () => {
     const contenu = JSON.stringify({ version: VERSION, profile: ldProf(), weeks: allSem(pr.nom), at: new Date().toISOString() }, null, 2);
     const nomFichier = `mon-releve-${pr.nom.replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.json`;
     const blob = new Blob([contenu], { type: "application/json" });
+    const enregistrerDate = () => { const d = new Date().toISOString(); try { localStorage.setItem(`${PX}last_backup`, d); } catch {} setLastBackup(d); };
     // Try Web Share API first (works in iOS PWA standalone)
     if (navigator.share && navigator.canShare) {
       try {
         const file = new File([blob], nomFichier, { type: "application/json" });
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file] });
-          flash("Sauvegarde partagée ✓"); return;
+          enregistrerDate(); flash("Sauvegarde effectuée ✓"); return;
         }
       } catch (e) { if (e.name === "AbortError") return; }
     }
     // Fallback: classic download (works in browsers, not always in iOS PWA)
     const a = document.createElement("a"); const url = URL.createObjectURL(blob);
     a.href = url; a.download = nomFichier; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_CLEANUP_MS); flash("Sauvegarde ✓");
+    setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_CLEANUP_MS); enregistrerDate(); flash("Sauvegarde effectuée ✓");
   };
   const restaurer = () => { const inp = document.createElement("input"); inp.type = "file"; inp.accept = ".json,application/json"; inp.style.cssText = "position:fixed;top:-9999px;left:-9999px;opacity:0"; document.body.appendChild(inp); inp.onchange = e => { const f = e.target.files[0]; if (!f) { document.body.removeChild(inp); return; } const r = new FileReader(); r.onload = ev => { try { const d = JSON.parse(ev.target.result); if (!d || typeof d !== "object" || !d.profile || typeof d.profile !== "object" || !Array.isArray(d.weeks)) throw new Error("Format invalide"); const pn = d.profile.nom || d.profile.name; if (!pn || typeof pn !== "string" || !pn.trim()) throw new Error("Nom manquant"); const p = { nom: pn.trim(), contrat: d.profile.contrat || "", entreprise: (d.profile.entreprise || d.profile.co || "").trim(), pointageRapide: d.profile.pointageRapide !== undefined ? d.profile.pointageRapide : true, pauseMatinHeure: d.profile.pauseMatinHeure || DEFAULT_PAUSE_MATIN_HEURE, pauseMatinFin: d.profile.pauseMatinFin || DEFAULT_PAUSE_MATIN_FIN, pauseMidiDebut: d.profile.pauseMidiDebut || DEFAULT_PAUSE_MIDI_DEBUT, pauseMidiFin: d.profile.pauseMidiFin || DEFAULT_PAUSE_MIDI_FIN }; svProf(p); let imported = 0; d.weeks.forEach(w => { if (!w || typeof w !== "object") return; const c = w.cle || w.key; if (!c || typeof c !== "string" || !w.data) return; svSem(c, p.nom, w.data); imported++; }); setPr(p); setOk(true); setRk(x => x + 1); flash(`Restauré ✓ (${imported} semaine${imported > 1 ? "s" : ""})`); } catch { flash("Fichier invalide"); } document.body.removeChild(inp); }; r.onerror = () => { flash("Erreur de lecture"); document.body.removeChild(inp); }; r.readAsText(f); }; setTimeout(() => inp.click(), 100); };
 
@@ -535,10 +538,23 @@ window.MonReleve = function MonReleve() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{d.valide && <ICheck size={14} />}<IDoc size={18} /><span style={{ color: P.dim, fontSize: 20 }}>›</span></div>
             </button>);
           })}
-          <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${P.border}` }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: P.sub, marginBottom: 12 }}>Sauvegarde</div>
-            <div style={{ display: "flex", gap: 10 }}><button onClick={exporter} style={{ ...st.sec, flex: 1 }}>Exporter</button><button onClick={restaurer} style={{ ...st.sec, flex: 1 }}>Restaurer</button></div>
-            <div style={{ fontSize: 11, color: P.dim, marginTop: 10, lineHeight: 1.5 }}>Exportez vos données régulièrement.</div>
+          <div style={{ marginTop: 28 }}>
+            <div style={st.sumC}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={P.teal} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span style={{ fontSize: 16, fontWeight: 700, color: P.text }}>Sécurité des données</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 14, background: lastBackup ? P.tealDim : "rgba(251,191,36,.08)", marginBottom: 16 }}>
+                <div style={{ width: 8, height: 8, borderRadius: 4, background: lastBackup ? P.teal : P.orange }} />
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: lastBackup ? P.teal : P.orange }}>{lastBackup ? "Dernière sauvegarde" : "Aucune sauvegarde enregistrée"}</div>
+                  {lastBackup && <div style={{ fontSize: 11, color: P.sub, marginTop: 2 }}>{new Date(lastBackup).toLocaleDateString("fr-FR")} à {new Date(lastBackup).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</div>}
+                </div>
+              </div>
+              <button onClick={exporter} style={{ ...st.cta, width: "100%", height: 48, fontSize: 14, marginBottom: 10 }}>Sauvegarder mes données</button>
+              <button onClick={restaurer} style={{ ...st.sec, width: "100%", marginBottom: 14 }}>Restaurer mes données</button>
+              <div style={{ fontSize: 11, color: P.muted, lineHeight: 1.6, textAlign: "center" }}>{/iPhone|iPad|iPod/.test(navigator.userAgent) ? "Conservez votre sauvegarde dans iCloud Drive." : /Android/.test(navigator.userAgent) ? "Conservez votre sauvegarde dans Google Drive." : "Conservez votre sauvegarde dans iCloud Drive (iPhone) ou Google Drive (Android)."}</div>
+            </div>
           </div>
         </>)}
       </div>
