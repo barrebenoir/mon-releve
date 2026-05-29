@@ -55,9 +55,10 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
  * ║  v1.5   — Sécurité des données                ║
  * ║  v1.6   — Bouton effacer heure + Férié        ║
  * ║  v1.7   — Réinitialiser natif iOS = vider     ║
+ * ║  v1.8   — Sélecteurs heure/minute natifs      ║
  * ╚═══════════════════════════════════════════════╝
  */
-const VERSION = "1.7";
+const VERSION = "1.8";
 
 // ── Timing constants ──
 const TOAST_DURATION_MS = 2000;
@@ -78,6 +79,9 @@ const CONTRATS = ["CDI — 35h", "CDI — 39h", "CDI — Temps partiel", "CDD", 
 const H_OBJ = { "CDI — 35h": 35, "CDI — 39h": 39, "CDI — Temps partiel": 28, CDD: 35, "CDD — Temps partiel": 28, Apprentissage: 35, Intérim: 35, Autre: 35 };
 const MOIS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
 const MOIS_C = ["jan.", "fév.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+const H_OPTS = Array.from({length: 24}, (_, i) => String(i).padStart(2, "0"));
+const M_OPTS = Array.from({length: 60}, (_, i) => String(i).padStart(2, "0"));
+const pT = v => v && v.includes(":") ? { h: v.split(":")[0], m: v.split(":")[1] } : { h: "", m: "" };
 const MOIS_U = ["JANVIER", "FÉVRIER", "MARS", "AVRIL", "MAI", "JUIN", "JUILLET", "AOÛT", "SEPTEMBRE", "OCTOBRE", "NOVEMBRE", "DÉCEMBRE"];
 
 // ── Palette Dark ──
@@ -183,9 +187,14 @@ window.MonReleve = function MonReleve() {
   useEffect(() => () => { if (toastRef.current) clearTimeout(toastRef.current); }, []);
   const mj = (i, f, v) => { if (!wd) return; const nj = wd.jours.map((j, k) => { if (k !== i) return j; const u = { ...j, [f]: v }; if (f === "absence" && !v) { u.motif = ""; u.motifAutre = ""; } return u; }); sv({ ...wd, jours: nj }); };
   const hNow = () => { const d = new Date(); return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; };
-  const hToMin = h => { if (!h) return -999; const [hh, mm] = h.split(":").map(Number); return hh * 60 + mm; };
-  const mjT = (i, f, v) => { const oldVal = wd.jours[i][f]; if (oldVal && oldVal !== v && Math.abs(hToMin(v) - hToMin(hNow())) <= 2) { mj(i, f, ""); } else { mj(i, f, v); } };
   const pointer = (i, f) => { mj(i, f, hNow()); flash(`${f === "arrivee" ? "Arrivée" : "Départ"} ${hNow()}`); };
+  const tSel = (val, field, idx) => { const { h, m } = pT(val); return (
+    <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+      <select value={h} onChange={e => { const v = e.target.value; mj(idx, field, v ? `${v}:${m || "00"}` : ""); }} style={st.tS}><option value="">—</option>{H_OPTS.map(v => <option key={v} value={v}>{v}</option>)}</select>
+      <span style={{ color: P.dim, fontSize: 14, fontWeight: 600 }}>:</span>
+      <select value={m} onChange={e => { const v = e.target.value; mj(idx, field, h ? `${h}:${v || "00"}` : ""); }} style={st.tS}><option value="">—</option>{M_OPTS.map(v => <option key={v} value={v}>{v}</option>)}</select>
+    </div>
+  ); };
   const valider = () => { if (!wd) return; sv({ ...wd, valide: true, valideA: new Date().toISOString() }); setPop(true); flash("Semaine validée ✓"); };
 
   const totMin = wd ? wd.jours.reduce((s, j) => j.absence ? s : s + cNet(j.arrivee, j.depart, pr), 0) : 0;
@@ -459,9 +468,9 @@ window.MonReleve = function MonReleve() {
                 {ok2 && <span style={st.netP}>{m2h(n)}</span>}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 6, alignItems: "center", marginTop: 8, paddingRight: 2 }}>
-                <div><div style={st.iL}>Arrivée</div><input type="time" value={j.arrivee} onChange={e => mjT(i, "arrivee", e.target.value)} style={st.tI} /></div>
+                <div><div style={st.iL}>Arrivée</div>{tSel(j.arrivee, "arrivee", i)}</div>
                 <div style={{ color: P.dim, marginTop: 18, fontSize: 12 }}>→</div>
-                <div><div style={st.iL}>Départ</div><input type="time" value={j.depart} onChange={e => mjT(i, "depart", e.target.value)} style={st.tI} /></div>
+                <div><div style={st.iL}>Départ</div>{tSel(j.depart, "depart", i)}</div>
               </div>
               {ok2 && <div style={{ fontSize: 12, color: P.sub, marginTop: 6 }}>Pause {m2h(cPause(j.arrivee, j.depart, pr))} · Net {m2h(n)}</div>}
             </div>);
@@ -607,6 +616,7 @@ const st = {
   absP: { fontSize: 12, fontWeight: 600, color: P.orange, background: "rgba(251,191,36,.08)", padding: "5px 14px", borderRadius: 999 },
   iL: { fontSize: 10, fontWeight: 600, color: P.sub, textTransform: "uppercase", letterSpacing: .5, marginBottom: 7 },
   tI: { display: "block", width: "100%", maxWidth: "100%", padding: "11px 0", fontSize: 14, fontWeight: 500, border: `1px solid ${P.border}`, borderRadius: 12, background: "rgba(255,255,255,.04)", outline: "none", textAlign: "center", boxSizing: "border-box", color: P.text, transition: TR },
+  tS: { flex: 1, padding: "11px 2px", fontSize: 14, fontWeight: 500, border: `1px solid ${P.border}`, borderRadius: 10, background: "rgba(255,255,255,.04)", outline: "none", textAlign: "center", color: P.text, WebkitAppearance: "none", appearance: "none", backgroundImage: "none", boxSizing: "border-box", transition: TR },
   mP: { padding: "10px 16px", borderRadius: 999, border: "none", background: "rgba(255,255,255,.06)", color: P.text, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: TR },
   archI: { width: "100%", display: "flex", alignItems: "center", padding: "20px 22px", ...GL, borderRadius: 24, marginBottom: 14, cursor: "pointer", textAlign: "left", transition: TR },
   cta: { padding: "0 32px", borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${P.sky}, ${P.teal})`, backgroundImage: `linear-gradient(180deg, rgba(255,255,255,.15), transparent), linear-gradient(135deg, ${P.sky}, ${P.teal})`, color: P.bg, fontSize: 15, fontWeight: 700, cursor: "pointer", textAlign: "center", height: 50, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 24px rgba(45,212,168,.20)", letterSpacing: .3, transition: TR },
