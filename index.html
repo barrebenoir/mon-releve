@@ -15,7 +15,6 @@ html{min-height:100%;background-color:#0B1120;background-image:radial-gradient(c
 body{min-height:100%;min-height:100dvh;width:100%;overflow-x:hidden;color:#fff;background-color:#0B1120;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 #status-bg{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.04));backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);z-index:60}
 #root{min-height:100vh;min-height:100dvh;padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);padding-bottom:env(safe-area-inset-bottom)}
-input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.5}
 select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='rgba(255,255,255,.5)' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
 @media print{
 *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
@@ -42,13 +41,11 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
 /*
  * ╔═══════════════════════════════════════════════╗
- * ║  MON RELEVÉ — v2.0                            ║
- * ║  Dark Premium Theme · Refonte UX              ║
- * ║                                               ║
- * ║  v2.0 — TimeInput, compact UI, refactoring    ║
+ * ║  MON RELEVÉ — v2.3                            ║
+ * ║  Dark Premium Theme · Audit pré-production    ║
  * ╚═══════════════════════════════════════════════╝
  */
-const VERSION = "2.2";
+const VERSION = "2.3";
 
 // ── Constants ──
 const TOAST_MS = 2000, DL_MS = 1000, MS_DAY = 864e5, DEF_OBJ = 35;
@@ -261,7 +258,7 @@ window.MonReleve=function MonReleve(){
     return(<div id="releve-pdf" style={{background:pk.bg,margin:16,borderRadius:20,padding:20,boxShadow:"0 4px 24px rgba(0,0,0,.2)",fontSize:12,lineHeight:1.6,overflowX:"auto",color:pk.text}}>
       <div style={{display:"flex",justifyContent:"space-between",paddingBottom:14,borderBottom:`2px solid ${pk.text}`,marginBottom:12}}>
         <div><div style={{fontSize:15,fontWeight:700,color:pk.text}}>{pr.entreprise}</div><div style={{fontSize:10,color:pk.sub,marginTop:2}}>Relevé d'heures hebdomadaire</div></div>
-        <div style={{textAlign:"right"}}><div style={{fontSize:12,fontWeight:600,color:pk.text}}>{pr.nom}</div><div style={{fontSize:10,color:pk.accent,fontWeight:600,marginTop:2}}>{pr.contrat}</div><div style={{fontSize:11,fontWeight:700,marginTop:4,color:pk.text}}>{ck2}</div><div style={{fontSize:9,color:pk.sub}}>{fF(l2)} — {fF(v2)}</div></div>
+        <div style={{textAlign:"right"}}><div style={{fontSize:12,fontWeight:600,color:pk.text}}>{pr.nom}</div><div style={{fontSize:10,color:pk.accent,fontWeight:600,marginTop:2}}>{pr.contrat}</div><div style={{fontSize:11,fontWeight:700,marginTop:4,color:pk.text}}>Semaine {parseInt(ck2.split("-S")[1])}</div><div style={{fontSize:9,color:pk.sub}}>{fF(l2)} — {fF(v2)}</div></div>
       </div>
       <table style={{width:"100%",borderCollapse:"collapse",marginTop:6,fontSize:10,border:`1px solid ${pk.border}`}}>
         <colgroup><col style={{width:"16%"}}/><col style={{width:"22%"}}/><col style={{width:"14%"}}/><col style={{width:"14%"}}/><col style={{width:"14%"}}/><col style={{width:"20%"}}/></colgroup>
@@ -357,7 +354,7 @@ window.MonReleve=function MonReleve(){
       <div style={{padding:"0 16px 32px"}}>
         {!cfDel?<button onClick={()=>setCfDel(true)} style={{...st.sec,width:"100%",color:P.red}}>Supprimer ce relevé</button>
           :<div style={{background:"rgba(239,68,68,.1)",borderRadius:18,padding:16}}>
-            <div style={{fontSize:13,fontWeight:600,color:P.text,textAlign:"center",marginBottom:12}}>Supprimer {arch.cle} ?</div>
+            <div style={{fontSize:13,fontWeight:600,color:P.text,textAlign:"center",marginBottom:12}}>Supprimer la semaine {parseInt(arch.cle.split("-S")[1])} ?</div>
             <div style={{display:"flex",gap:10}}><button onClick={()=>setCfDel(false)} style={{...st.sec,flex:1}}>Annuler</button><button onClick={()=>{delSem(arch.cle,pr.nom);setArch(null);setCfDel(false);setRk(x=>x+1);flash("Supprimé");}} style={{...st.sec,flex:1,background:P.red,color:"#fff"}}>Supprimer</button></div>
           </div>}
       </div>
@@ -414,7 +411,7 @@ window.MonReleve=function MonReleve(){
               :wd.valide?(<><div style={{width:7,height:7,borderRadius:4,background:P.teal}}/><span style={{fontSize:11,fontWeight:600,color:P.teal}}>Envoyé</span></>)
               :(<><div style={{width:7,height:7,borderRadius:4,background:P.orange}}/><span style={{fontSize:11,fontWeight:600,color:P.orange}}>Non envoyé</span></>)}
             </div>
-            <span style={{fontSize:10,color:P.muted}}>{wd.jours.filter(j=>!j.absence&&(j.arrivee||j.depart)).length} jour{wd.jours.filter(j=>!j.absence&&(j.arrivee||j.depart)).length>1?"s":""} saisis</span>
+            {(()=>{const jc=wd.jours.filter(j=>!j.absence&&(j.arrivee||j.depart)).length;return<span style={{fontSize:10,color:P.muted}}>{jc} jour{jc>1?"s":""} saisis</span>;})()}
           </div>
         </div>
       </div>
