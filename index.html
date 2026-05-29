@@ -48,7 +48,7 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
  * ║  v2.0 — TimeInput, compact UI, refactoring    ║
  * ╚═══════════════════════════════════════════════╝
  */
-const VERSION = "2.0";
+const VERSION = "2.0.1";
 
 // ── Constants ──
 const TOAST_MS = 2000, DL_MS = 1000, MS_DAY = 864e5, DEF_OBJ = 35;
@@ -188,6 +188,7 @@ window.MonReleve=function MonReleve(){
   const[arch,setArch]=useState(null);
   const[cfDel,setCfDel]=useState(false);
   const[rk,setRk]=useState(0);
+  const[peOpen,setPeOpen]=useState(false);
   const[lastBackup,setLastBackup]=useState(()=>{try{return localStorage.getItem(`${PX}last_backup`)||null;}catch{return null;}});
 
   const{s:sem,l:lun}=semOff(off);
@@ -289,7 +290,6 @@ window.MonReleve=function MonReleve(){
 
   // ── Setup ──
   if(!ok||ed){
-    const[peOpen,setPeOpen]=useState(false);
     return(
     <div style={st.app}><div style={st.setup}>
       <IClock color={P.teal} size={44}/>
@@ -312,14 +312,14 @@ window.MonReleve=function MonReleve(){
           {peOpen&&<div style={{marginTop:12}}>
             <div style={{...GL,borderRadius:16,padding:12,marginBottom:8}}>
               <div style={{fontSize:12,fontWeight:600,color:P.text,marginBottom:8}}>Pause matin</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,paddingRight:2}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <div><div style={st.iL}>Début</div><input type="time" value={pr.pauseMatinHeure||D_PM_H} onChange={e=>setPr({...pr,pauseMatinHeure:e.target.value})} style={st.tI}/></div>
                 <div><div style={st.iL}>Fin</div><input type="time" value={pr.pauseMatinFin||D_PM_F} onChange={e=>setPr({...pr,pauseMatinFin:e.target.value})} style={st.tI}/></div>
               </div>
             </div>
             <div style={{...GL,borderRadius:16,padding:12}}>
               <div style={{fontSize:12,fontWeight:600,color:P.text,marginBottom:8}}>Pause midi</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,paddingRight:2}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <div><div style={st.iL}>Début</div><input type="time" value={pr.pauseMidiDebut||D_PD_D} onChange={e=>setPr({...pr,pauseMidiDebut:e.target.value})} style={st.tI}/></div>
                 <div><div style={st.iL}>Fin</div><input type="time" value={pr.pauseMidiFin||D_PD_F} onChange={e=>setPr({...pr,pauseMidiFin:e.target.value})} style={st.tI}/></div>
               </div>
@@ -329,6 +329,7 @@ window.MonReleve=function MonReleve(){
       </div>
       <button onClick={()=>{if(!pr.nom.trim()||!pr.entreprise.trim()){flash("Remplissez tous les champs");return;}svProf(pr);setOk(true);setEd(false);flash("Enregistré ✓");}} style={{...st.cta,width:"100%"}}>{ok?"Enregistrer":"Commencer"}</button>
       {ok&&<button onClick={()=>setEd(false)} style={{...st.sec,width:"100%",marginTop:10}}>Annuler</button>}
+      {!ok&&<button onClick={restaurer} style={{...st.sec,width:"100%",marginTop:10}}>Restaurer une sauvegarde</button>}
       <div style={{fontSize:10,color:P.dim,marginTop:14}}>v{VERSION}</div>
     </div></div>);
   }
