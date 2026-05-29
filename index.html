@@ -48,7 +48,7 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
  * ║  v2.0 — TimeInput, compact UI, refactoring    ║
  * ╚═══════════════════════════════════════════════╝
  */
-const VERSION = "2.1";
+const VERSION = "2.2";
 
 // ── Constants ──
 const TOAST_MS = 2000, DL_MS = 1000, MS_DAY = 864e5, DEF_OBJ = 35;
@@ -118,40 +118,34 @@ function getHist(){return ldHist().slice(0,6).map(x=>x.t);}
 function TimeInput({value,onChange,label,noHistory}){
   const[focused,setFocused]=useState(false);
   const[raw,setRaw]=useState("");
+  const[err,setErr]=useState(false);
   const inputRef=useRef(null);
   const hist=useMemo(()=>noHistory?[]:getHist(),[focused,noHistory]);
   
-  const parseRaw=r=>{
-    const digits=r.replace(/\D/g,"").slice(0,4);
-    if(!digits)return"";
+  const parseDigits=d=>{
+    if(!d)return"";
     let h,m;
-    if(digits.length<=2){h=parseInt(digits);m=0;}
-    else if(digits.length===3){h=parseInt(digits[0]);m=parseInt(digits.slice(1));}
-    else{h=parseInt(digits.slice(0,2));m=parseInt(digits.slice(2));}
-    if(h>23||m>59)return null;
+    if(d.length<=2){h=parseInt(d);m=0;}
+    else if(d.length===3){h=parseInt(d[0]);m=parseInt(d.slice(1));}
+    else{h=parseInt(d.slice(0,2));m=parseInt(d.slice(2));}
+    if(isNaN(h)||isNaN(m)||h>23||m>59)return null;
     return`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
   };
   
-  const handleFocus=()=>{setFocused(true);setRaw(value||"");if(inputRef.current)inputRef.current.select();};
-  const handleBlur=()=>{
-    setFocused(false);
-    if(!raw&&value){onChange("");return;}
-    if(!raw)return;
-    const parsed=parseRaw(raw);
+  const commit=()=>{
+    setFocused(false);setErr(false);
+    if(!raw){if(value)onChange("");return;}
+    const digits=raw.replace(/\D/g,"");
+    const parsed=parseDigits(digits);
+    if(parsed===null){setErr(true);setTimeout(()=>setErr(false),TOAST_MS);return;}
     if(parsed){onChange(parsed);if(!noHistory)addHist(parsed);}
   };
-  const handleChange=e=>{
-    let v=e.target.value.replace(/[^0-9:]/g,"");
-    if(v.length>5)v=v.slice(0,5);
-    setRaw(v);
-    // Auto-commit on 4 digits or valid HH:MM
-    const digits=v.replace(/\D/g,"");
-    if(digits.length===4){const p=parseRaw(v);if(p){onChange(p);if(!noHistory)addHist(p);setRaw(p);if(inputRef.current)inputRef.current.blur();}}
-    if(v.match(/^\d{1,2}:\d{2}$/)){const p=parseRaw(v);if(p){onChange(p);if(!noHistory)addHist(p);setRaw(p);}}
-  };
-  const handleKeyDown=e=>{if(e.key==="Enter"){e.target.blur();}};
+  const handleFocus=()=>{setFocused(true);setErr(false);setRaw(value?value.replace(":",""):"");setTimeout(()=>{if(inputRef.current)inputRef.current.select();},50);};
+  const handleBlur=()=>commit();
+  const handleChange=e=>{setRaw(e.target.value.replace(/\D/g,"").slice(0,4));setErr(false);};
+  const handleKeyDown=e=>{if(e.key==="Enter")e.target.blur();};
   const clear=()=>{onChange("");setRaw("");setFocused(false);};
-  const pickHist=t=>{onChange(t);if(!noHistory)addHist(t);setRaw(t);setFocused(false);};
+  const pickHist=t=>{onChange(t);if(!noHistory)addHist(t);setRaw(t.replace(":",""));setFocused(false);};
   
   const displayVal=focused?raw:(value||"–:–");
   const hasVal=!!value;
@@ -162,10 +156,11 @@ function TimeInput({value,onChange,label,noHistory}){
       <div style={{position:"relative",display:"flex",alignItems:"center"}}>
         <input ref={inputRef} type="text" inputMode="numeric" value={displayVal}
           onFocus={handleFocus} onBlur={handleBlur} onChange={handleChange} onKeyDown={handleKeyDown}
-          style={{...st.tI,color:hasVal?P.text:P.dim,fontVariantNumeric:"tabular-nums",paddingRight:hasVal&&focused?32:12}}
+          style={{...st.tI,color:hasVal?P.text:P.dim,fontVariantNumeric:"tabular-nums",paddingRight:hasVal&&focused?32:12,...(err?{borderColor:P.red}:{})}}
         />
         {hasVal&&focused&&<button onMouseDown={e=>{e.preventDefault();clear();}} style={st.clrBtn} aria-label="Effacer">✕</button>}
       </div>
+      {err&&<div style={{fontSize:10,color:P.red,marginTop:3}}>Heure invalide</div>}
       {focused&&hist.length>0&&(
         <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:6}}>
           {hist.map(t=><button key={t} onMouseDown={e=>{e.preventDefault();pickHist(t);}} style={st.chip}>{t}</button>)}
@@ -589,10 +584,10 @@ const st={
   topBar:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 18px",background:"linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03))",backdropFilter:P.glassBlur,WebkitBackdropFilter:P.glassBlur,borderBottom:`1px solid ${P.glassBorder}`},
   topBtn:{background:"none",border:"none",fontSize:15,fontWeight:600,color:P.teal,cursor:"pointer",padding:"6px 0",transition:TR},
   topAct:{padding:"8px 16px",borderRadius:12,border:"none",backgroundImage:`linear-gradient(180deg, rgba(255,255,255,.15), transparent), linear-gradient(135deg, ${P.sky}, ${P.teal})`,color:P.bg,fontSize:12,fontWeight:700,cursor:"pointer",transition:TR},
-  tabBar:{position:"fixed",bottom:0,left:0,right:0,display:"flex",justifyContent:"center",padding:"8px 16px 30px",zIndex:50,pointerEvents:"none"},
-  tabIn:{display:"flex",background:"linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04))",backdropFilter:"blur(32px)",WebkitBackdropFilter:"blur(32px)",borderRadius:24,boxShadow:"0 12px 40px rgba(0,0,0,.28)",border:`1px solid ${P.glassBorder}`,padding:"5px 8px",pointerEvents:"auto",maxWidth:340,width:"100%",gap:4},
-  tabB:{flex:1,padding:"8px 4px 6px",border:"none",background:"none",cursor:"pointer",color:P.muted,display:"flex",flexDirection:"column",alignItems:"center",gap:2,borderRadius:16,transition:TR},
-  tabA:{color:P.teal,background:"rgba(45,212,168,.08)"},
+  tabBar:{position:"fixed",bottom:0,left:0,right:0,display:"flex",justifyContent:"center",padding:"8px 20px 30px",zIndex:50,pointerEvents:"none"},
+  tabIn:{display:"flex",background:"rgba(18,33,61,.65)",backdropFilter:"blur(40px)",WebkitBackdropFilter:"blur(40px)",borderRadius:999,boxShadow:"0 8px 32px rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.08)",padding:"4px 6px",pointerEvents:"auto",maxWidth:320,width:"100%",gap:2},
+  tabB:{flex:1,padding:"8px 4px 6px",border:"none",background:"none",cursor:"pointer",color:P.muted,display:"flex",flexDirection:"column",alignItems:"center",gap:2,borderRadius:999,transition:"all .3s cubic-bezier(.2,.8,.2,1)"},
+  tabA:{color:P.teal,background:"rgba(45,212,168,.1)"},
 };
 
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(window.MonReleve));

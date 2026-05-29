@@ -3,8 +3,8 @@
  * Offline-first · Auto-update · iOS PWA compatible
  */
 
-const APP_VERSION = '2.1';
-const CACHE_CORE = 'mr-core-v2.1';
+const APP_VERSION = '2.2';
+const CACHE_CORE = 'mr-core-v2.2';
 const CACHE_CDN = 'mr-cdn-v1';
 
 // Core assets (versioned — cleared on update)
