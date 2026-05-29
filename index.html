@@ -48,7 +48,7 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
  * ║  v2.0 — TimeInput, compact UI, refactoring    ║
  * ╚═══════════════════════════════════════════════╝
  */
-const VERSION = "2.0.1";
+const VERSION = "2.0.2";
 
 // ── Constants ──
 const TOAST_MS = 2000, DL_MS = 1000, MS_DAY = 864e5, DEF_OBJ = 35;
@@ -333,6 +333,9 @@ window.MonReleve=function MonReleve(){
       <div style={{fontSize:10,color:P.dim,marginTop:14}}>v{VERSION}</div>
     </div></div>);
   }
+
+  // ── Loading guard ──
+  if(!wd)return<div style={st.app}><div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh"}}><IClock color={P.teal} size={32}/></div></div>;
 
   // ── Validation popup ──
   if(pop&&wd){return(
