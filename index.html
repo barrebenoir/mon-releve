@@ -41,11 +41,11 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
 /*
  * ╔═══════════════════════════════════════════════╗
- * ║  MON RELEVÉ — v2.3                            ║
- * ║  Dark Premium Theme · Audit pré-production    ║
+ * ║  MON RELEVÉ — v1.0                            ║
+ * ║  Première version stable · Test terrain       ║
  * ╚═══════════════════════════════════════════════╝
  */
-const VERSION = "2.3";
+const VERSION = "1.0";
 
 // ── Constants ──
 const TOAST_MS = 2000, DL_MS = 1000, MS_DAY = 864e5, DEF_OBJ = 35;
@@ -181,6 +181,7 @@ window.MonReleve=function MonReleve(){
   const[cfDel,setCfDel]=useState(false);
   const[rk,setRk]=useState(0);
   const[peOpen,setPeOpen]=useState(false);
+  const[notesOpen,setNotesOpen]=useState(false);
   const[lastBackup,setLastBackup]=useState(()=>{try{return localStorage.getItem(`${PX}last_backup`)||null;}catch{return null;}});
 
   const{s:sem,l:lun}=semOff(off);
@@ -444,14 +445,15 @@ window.MonReleve=function MonReleve(){
             </div>);
           })}
           <div style={{fontSize:11,color:P.muted,textAlign:"center",marginTop:4,marginBottom:4}}>Pauses : {pr.pauseMatinHeure||D_PM_H}–{pr.pauseMatinFin||D_PM_F} + {pr.pauseMidiDebut||D_PD_D}–{pr.pauseMidiFin||D_PD_F}</div>
-          {/* Notes de semaine */}
+          {/* Notes de semaine — accordéon */}
           <div style={{marginTop:4}}>
-            <button onClick={()=>document.getElementById("notes-input")?.focus()} style={{background:"none",border:"none",cursor:"pointer",padding:0,width:"100%"}}>
-              <div style={{...GL,borderRadius:16,padding:"10px 14px",textAlign:"left"}}>
-                <div style={{fontSize:11,fontWeight:600,color:P.sub,marginBottom:4}}>Note de semaine <span style={{fontWeight:400,color:P.dim}}>(événement exceptionnel)</span></div>
-                <textarea id="notes-input" value={wd.notes||""} onChange={e=>setNotes(e.target.value)} placeholder="Ex : Salon Vélo — Samedi : 6h travaillées" rows={2} style={{width:"100%",background:"none",border:"none",color:P.text,fontSize:12,resize:"vertical",outline:"none",lineHeight:1.5,fontFamily:"inherit"}}/>
-              </div>
-            </button>
+            <div style={{...GL,borderRadius:16,padding:"10px 14px"}}>
+              <button onClick={()=>setNotesOpen(!notesOpen)} style={{width:"100%",background:"none",border:"none",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",padding:0}}>
+                <div style={{fontSize:11,fontWeight:600,color:P.sub}}>Notes de semaine {wd.notes?<span style={{color:P.teal,fontSize:9,marginLeft:4}}>●</span>:null}</div>
+                <span style={{color:P.sub,fontSize:14,transform:notesOpen?"rotate(180deg)":"none",transition:"transform .2s"}}>▾</span>
+              </button>
+              {notesOpen&&<textarea value={wd.notes||""} onChange={e=>setNotes(e.target.value)} placeholder="Salon, événement, déplacement, réunion client…" rows={2} style={{width:"100%",background:"none",border:"none",color:P.text,fontSize:12,resize:"vertical",outline:"none",lineHeight:1.5,fontFamily:"inherit",marginTop:8}}/>}
+            </div>
           </div>
         </>)}
 
@@ -549,7 +551,7 @@ window.MonReleve=function MonReleve(){
 const TR="transform .25s cubic-bezier(.2,.8,.2,1), opacity .25s ease, background-color .25s ease, border-color .25s ease";
 const GL={background:"linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04))",backdropFilter:P.glassBlur,WebkitBackdropFilter:P.glassBlur,border:`1px solid ${P.glassBorder}`,boxShadow:P.glassShadow};
 const st={
-  app:{fontFamily:"-apple-system,'SF Pro Display','Inter',sans-serif",background:P.bgGrad,minHeight:"100vh",maxWidth:520,margin:"0 auto",position:"relative",WebkitFontSmoothing:"antialiased",paddingBottom:160,color:P.text},
+  app:{fontFamily:"-apple-system,'SF Pro Display','Inter',sans-serif",background:P.bgGrad,minHeight:"100vh",maxWidth:520,margin:"0 auto",position:"relative",WebkitFontSmoothing:"antialiased",paddingBottom:120,color:P.text},
   setup:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",padding:24,gap:8},
   sCard:{width:"100%",padding:24,borderRadius:28,...GL,marginBottom:20},
   fg:{marginBottom:14},

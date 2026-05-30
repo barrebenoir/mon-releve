@@ -1,10 +1,10 @@
 /*
- * Mon Relevé — Service Worker v2.0
+ * Mon Relevé — Service Worker v1.0
  * Offline-first · Auto-update · iOS PWA compatible
  */
 
-const APP_VERSION = '2.3';
-const CACHE_CORE = 'mr-core-v2.3';
+const APP_VERSION = '1.0';
+const CACHE_CORE = 'mr-core-v1.0';
 const CACHE_CDN = 'mr-cdn-v1';
 
 // Core assets (versioned — cleared on update)
