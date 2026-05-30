@@ -446,7 +446,7 @@ window.MonReleve=function MonReleve(){
           })}
           <div style={{fontSize:11,color:P.muted,textAlign:"center",marginTop:4,marginBottom:4}}>Pauses : {pr.pauseMatinHeure||D_PM_H}–{pr.pauseMatinFin||D_PM_F} + {pr.pauseMidiDebut||D_PD_D}–{pr.pauseMidiFin||D_PD_F}</div>
           {/* Notes de semaine — accordéon */}
-          <div style={{marginTop:4}}>
+          <div style={{marginTop:4,marginBottom:70}}>
             <div style={{...GL,borderRadius:16,padding:"10px 14px"}}>
               <button onClick={()=>setNotesOpen(!notesOpen)} style={{width:"100%",background:"none",border:"none",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",padding:0}}>
                 <div style={{fontSize:11,fontWeight:600,color:P.sub}}>Notes de semaine {wd.notes?<span style={{color:P.teal,fontSize:9,marginLeft:4}}>●</span>:null}</div>
@@ -551,7 +551,7 @@ window.MonReleve=function MonReleve(){
 const TR="transform .25s cubic-bezier(.2,.8,.2,1), opacity .25s ease, background-color .25s ease, border-color .25s ease";
 const GL={background:"linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04))",backdropFilter:P.glassBlur,WebkitBackdropFilter:P.glassBlur,border:`1px solid ${P.glassBorder}`,boxShadow:P.glassShadow};
 const st={
-  app:{fontFamily:"-apple-system,'SF Pro Display','Inter',sans-serif",background:P.bgGrad,minHeight:"100vh",maxWidth:520,margin:"0 auto",position:"relative",WebkitFontSmoothing:"antialiased",paddingBottom:120,color:P.text},
+  app:{fontFamily:"-apple-system,'SF Pro Display','Inter',sans-serif",background:P.bgGrad,minHeight:"100vh",maxWidth:520,margin:"0 auto",position:"relative",WebkitFontSmoothing:"antialiased",paddingBottom:90,color:P.text},
   setup:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",padding:24,gap:8},
   sCard:{width:"100%",padding:24,borderRadius:28,...GL,marginBottom:20},
   fg:{marginBottom:14},
